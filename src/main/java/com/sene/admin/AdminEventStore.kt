@@ -30,7 +30,8 @@ class AdminEventStore(context: Context) {
             val id = item.optString("eventId")
             if (id.isNotBlank()) merged[id] = item
         }
-        val ordered = merged.values.sortedBy { it.optLong("cursor", 0L) }.takeLast(500)
+        // Nunca descartar eventos locales que todavía podrían no estar confirmados por el servidor.
+        val ordered = merged.values.sortedBy { it.optLong("cursor", 0L) }
         val output = JSONArray()
         ordered.forEach { output.put(it) }
         return encryptAndCommit(output.toString())
@@ -49,9 +50,13 @@ class AdminEventStore(context: Context) {
                 cipher.doFinal(Base64.decode(encryptedText, Base64.NO_WRAP)),
                 Charsets.UTF_8
             ))
-        } catch (_: Exception) {
-            prefs.edit().remove("events_iv").remove("events_data").commit()
-            JSONArray()
+        } catch (error: Exception) {
+            // Fallar de forma cerrada: no borrar un lote cifrado posiblemente
+            // recuperable ni permitir confirmar nuevos cursores tras perder eventos.
+            throw IllegalStateException(
+                "No se pudo descifrar la bandeja administrativa; se conserva el archivo local y no se enviará ACK.",
+                error
+            )
         }
     }
 

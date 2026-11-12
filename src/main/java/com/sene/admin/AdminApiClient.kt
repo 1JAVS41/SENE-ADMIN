@@ -12,7 +12,13 @@ class AdminApiClient(context: Context, baseUrl: String) {
     private val sessions = AdminSessionStore(app)
 
     init {
-        require(root.startsWith("https://")) { "El servidor administrativo debe usar HTTPS" }
+        require(root == TEST_SERVER) {
+            "Esta versión de SENE ADMIN solo puede conectarse al Worker de pruebas."
+        }
+    }
+
+    companion object {
+        private const val TEST_SERVER = "https://sene-licensing-api-testing.1codex41.workers.dev"
     }
 
     fun login(email: String, password: String): JSONObject {

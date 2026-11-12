@@ -157,7 +157,7 @@ class MainActivity : Activity() {
             }.start()
         }
         root.addView(label(
-            "Las operaciones de autorización y auditoría se habilitarán mediante los endpoints administrativos protegidos.",
+            "Las autorizaciones se registran en la auditoría del servidor. La administración avanzada de todos los parámetros y eventos sigue pendiente de integración.",
             11f, muted, false
         ).apply { setPadding(dp(4), dp(18), dp(4), 0) })
         setContentView(scroll)

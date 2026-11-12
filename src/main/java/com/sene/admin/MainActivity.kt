@@ -118,10 +118,12 @@ class MainActivity : Activity() {
             setPadding(dp(2), dp(20), 0, dp(8))
         })
         val modules = listOf(
+            arrayOf("EMPRESAS Y LICENCIAS", "Estado de licencias, vigencias y equipos activos.", "/v1/operator/licenses", ""),
             arrayOf("REGISTROS PENDIENTES", "Altas de empresas y folios de activación.", "/v1/operator/registrations/pending", "/v1/operator/registrations/authorize"),
             arrayOf("RENOVACIONES", "Solicitudes de mensualidad pendientes.", "/v1/operator/renewals/pending", "/v1/operator/renewals/authorize"),
             arrayOf("REPOSICIONES DE EQUIPO", "Reposiciones pendientes de validación.", "/v1/operator/replacements/pending", "/v1/operator/replacements/authorize"),
-            arrayOf("PAGOS DE RECUPERACIÓN PATRÓN", "Pagos para recuperar o reponer el equipo PATRÓN.", "/v1/operator/patron-recovery-payments/pending", "/v1/operator/patron-recovery-payments/authorize")
+            arrayOf("PAGOS DE RECUPERACIÓN PATRÓN", "Pagos para recuperar o reponer el equipo PATRÓN.", "/v1/operator/patron-recovery-payments/pending", "/v1/operator/patron-recovery-payments/authorize"),
+            arrayOf("AUDITORÍA", "Eventos administrativos y trazabilidad de operaciones.", "/v1/operator/audit", "")
         )
         modules.forEach { module ->
             val title = module[0]
@@ -185,7 +187,8 @@ class MainActivity : Activity() {
                         AlertDialog.Builder(this).setTitle(title)
                             .setItems(labels) { _, index ->
                                 val item = rows[index]
-                                showPaymentValidation(title, item, authorizePath)
+                                if (authorizePath.isBlank()) showItemDetails(title, item)
+                                else showPaymentValidation(title, item, authorizePath)
                             }
                             .setNegativeButton("CERRAR", null).show()
                     }
@@ -200,6 +203,24 @@ class MainActivity : Activity() {
                 }
             }
         }.start()
+    }
+
+    private fun showItemDetails(title: String, item: JSONObject) {
+        val message = buildString {
+            append(item.toString(2))
+            val details = item.optString("details_json")
+            if (details.isNotBlank()) {
+                try {
+                    append("\n\nDETALLES\n").append(JSONObject(details).toString(2))
+                } catch (_: Exception) {
+                    append("\n\nDETALLES\n").append(details)
+                }
+            }
+        }
+        AlertDialog.Builder(this).setTitle(title)
+            .setMessage(message)
+            .setPositiveButton("CERRAR", null)
+            .show()
     }
 
     private fun showPaymentValidation(title: String, item: JSONObject, authorizePath: String) {

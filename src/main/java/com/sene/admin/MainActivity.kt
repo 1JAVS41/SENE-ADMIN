@@ -11,6 +11,7 @@ import android.widget.LinearLayout
 import android.widget.ScrollView
 import android.widget.TextView
 
+// La consola solo habilita operaciones tras autenticar al administrador en el servidor.
 class MainActivity : Activity() {
     private val navy = Color.rgb(8, 22, 34)
     private val panel = Color.rgb(17, 42, 59)

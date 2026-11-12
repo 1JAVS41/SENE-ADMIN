@@ -66,8 +66,8 @@ class MainActivity : Activity() {
             val url = server.text.toString().trim().trimEnd('/')
             val user = email.text.toString().trim()
             val pass = password.text.toString()
-            if (!url.startsWith("https://") || user.isBlank() || pass.length < 10) {
-                Toast.makeText(this, "Revisa la URL HTTPS, el correo y la contraseña.", Toast.LENGTH_LONG).show()
+            if (url != defaultServer || user.isBlank() || pass.length < 10) {
+                Toast.makeText(this, "Esta APK solo admite el Worker de pruebas. Revisa la URL, el correo y la contraseña.", Toast.LENGTH_LONG).show()
                 return@setOnClickListener
             }
             enter.isEnabled = false

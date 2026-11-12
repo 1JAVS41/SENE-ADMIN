@@ -44,6 +44,44 @@ class AdminApiClient(context: Context, baseUrl: String) {
             .put("deliveryPhone", deliveryPhone.trim()), token)
     }
 
+    fun adminEvents(): JSONObject {
+        val token = sessions.read() ?: throw IllegalStateException("La sesión administrativa venció")
+        return request("/v1/admin/events", "GET", null, token)
+    }
+
+    fun acknowledgeAdminEvents(batch: JSONObject, ackId: String): JSONObject {
+        val token = sessions.read() ?: throw IllegalStateException("La sesión administrativa venció")
+        val items = batch.optJSONArray("items") ?: org.json.JSONArray()
+        val expectedHash = batch.optString("payloadSha256")
+        val localHash = sha256(canonicalJson(items))
+        check(expectedHash == localHash) { "La huella del lote de eventos no coincide" }
+        val body = JSONObject()
+            .put("ackId", ackId)
+            .put("fromCursor", batch.optLong("fromCursor"))
+            .put("throughCursor", batch.optLong("throughCursor"))
+            .put("deliveryId", batch.optString("deliveryId"))
+            .put("payloadSha256", expectedHash)
+        return request("/v1/admin/events/ack", "POST", body, token)
+    }
+
+    private fun canonicalJson(value: Any?): String = when (value) {
+        null, JSONObject.NULL -> "null"
+        is JSONObject -> value.keys().asSequence().toList().sorted().joinToString(",", "{", "}") {
+            JSONObject.quote(it) + ":" + canonicalJson(value.get(it))
+        }
+        is org.json.JSONArray -> (0 until value.length()).joinToString(",", "[", "]") {
+            canonicalJson(value.get(it))
+        }
+        is String -> JSONObject.quote(value)
+        is Number, is Boolean -> value.toString()
+        else -> JSONObject.quote(value.toString())
+    }
+
+    private fun sha256(value: String): String =
+        java.security.MessageDigest.getInstance("SHA-256")
+            .digest(value.toByteArray(Charsets.UTF_8))
+            .joinToString("") { "%02x".format(it) }
+
     private fun request(path: String, method: String, body: JSONObject?, token: String?): JSONObject {
         val connection = (URL(root + path).openConnection() as HttpURLConnection).apply {
             requestMethod = method

@@ -40,7 +40,14 @@ jobs:
           echo "/tmp/gradle-8.9/bin" >> "$GITHUB_PATH"
       - name: Compilar SENE ADMIN
         run: gradle --no-daemon assembleDebug
-      - name: Verificar identidad y logotipo
+          - name: Localizar APK para prueba de arranque
+        id: apk
+        shell: bash
+        run: |
+          APK_PATH="$(find "$GITHUB_WORKSPACE/build/outputs/apk" -type f -name '*.apk' | sort | head -n 1)"
+          test -n "$APK_PATH" && test -s "$APK_PATH"
+          echo "path=$APK_PATH" >> "$GITHUB_OUTPUT"
+  - name: Verificar identidad y logotipo
         run: |
           APK="$(find build/outputs/apk/debug -maxdepth 1 -name '*.apk' -type f | head -n 1)"
           test -s "$APK"
@@ -50,6 +57,8 @@ jobs:
           unzip -l "$APK" | grep -q 'logo_sene_pv'
       - name: Smoke test de arranque en emulador Android 35
         uses: reactivecircus/android-emulator-runner@v2
+        env:
+          APK_PATH: ${{ steps.apk.outputs.path }}
         with:
           api-level: 35
           target: google_apis
@@ -60,4 +69,36 @@ jobs:
           cores: 2
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -no-snapshot-save
           script: |
-            adb wait-for-device && APK_PATH="$(find build/outputs/apk/debug -maxdepth 1 -name '*.apk' -type f | head -n 1)" && test -s "$APK_PATH" && adb install -r "$APK_PATH" && adb shell am start -W -n com.sene.admin/.MainActivity && sleep 5 && (adb shell pidof com.sene.admin || { adb logcat -d -t 500; exit 1; })
+            set -euo pipefail
+            test -n "$APK_PATH" && test -s "$APK_PATH"
+            adb wait-for-device
+            for attempt in $(seq 1 180); do
+              BOOTED="$(adb shell getprop sys.boot_completed 2>/dev/null | tr -d '\\r' || true)"
+              [ "$BOOTED" = "1" ] && break
+              sleep 2
+            done
+            [ "$(adb shell getprop sys.boot_completed | tr -d '\\r')" = "1" ]
+            adb devices -l
+            adb install -r "$APK_PATH"
+            adb shell am force-stop com.sene.admin
+            adb shell am start -W -n com.sene.admin/.MainActivity
+            for attempt in $(seq 1 30); do
+              PID="$(adb shell pidof com.sene.admin 2>/dev/null | tr -d '\\r' || true)"
+              [ -n "$PID" ] && exit 0
+              sleep 1
+            done
+            adb logcat -d -t 1000
+            exit 1
+
+      - name: Preparar nombre de entrega
+        run: |
+          mkdir -p dist
+          APK="$(find build/outputs/apk -type f -name '*.apk' | sort | head -n 1)"
+          test -n "$APK" && test -s "$APK"
+          cp "$APK" "dist/SENE ADMIN-online.apk"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: SENE ADMIN-online
+          path: dist/SENE ADMIN-online.apk
+          if-no-files-found: error
+          retention-days: 14

@@ -256,7 +256,7 @@ class MainActivity : Activity() {
                                     item.optString("status") == "pending" &&
                                     item.optLong("setup_paid_at") > 0L &&
                                     item.optLong("first_rent_paid_at") > 0L &&
-                                    item.optInt("active_devices") == 0
+                                    item.optInt("active_patron_devices") == 0
                                 if (isPaidPendingLicense) {
                                     showReissueDialog("REEMITIR ACTIVACIÓN", "/v1/operator/licenses/reissue-activation-code", "licenseId", requestId)
                                 } else if (authorizePath == "/v1/operator/renewals/authorize" &&

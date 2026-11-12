@@ -251,7 +251,18 @@ class MainActivity : Activity() {
                         AlertDialog.Builder(this).setTitle(title)
                             .setItems(labels) { _, index ->
                                 val item = rows[index]
-                                if (authorizePath.isBlank()) showItemDetails(title, item)
+                                val requestId = item.optString("id")
+                                val isPaidPendingLicense = path == "/v1/operator/licenses" &&
+                                    item.optString("status") == "pending" &&
+                                    item.optLong("setup_paid_at") > 0L &&
+                                    item.optLong("first_rent_paid_at") > 0L &&
+                                    item.optInt("active_devices") == 0
+                                if (isPaidPendingLicense) {
+                                    showReissueDialog("REEMITIR ACTIVACIÓN", "/v1/operator/licenses/reissue-activation-code", "licenseId", requestId)
+                                } else if (authorizePath == "/v1/operator/renewals/authorize" &&
+                                    item.optString("status") == "authorized") {
+                                    showReissueDialog("REEMITIR RENOVACIÓN", "/v1/operator/renewals/reissue-code", "requestId", requestId)
+                                } else if (authorizePath.isBlank()) showItemDetails(title, item)
                                 else showPaymentValidation(title, item, authorizePath)
                             }
                             .setNegativeButton("CERRAR", null).show()
@@ -285,6 +296,61 @@ class MainActivity : Activity() {
             .setMessage(message)
             .setPositiveButton("CERRAR", null)
             .show()
+    }
+
+    private fun showReissueDialog(title: String, path: String, idField: String, idValue: String) {
+        if (idValue.isBlank()) return
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), 0)
+        }
+        val phone = field("Número oficial AYUDA (+52...)")
+        form.addView(phone, matchWrap())
+        form.addView(label(
+            "Se invalidará el código anterior y se generará uno nuevo de un solo uso. El teléfono debe estar registrado como AYUDA oficial.",
+            12f, muted, false
+        ).apply { setPadding(0, dp(10), 0, 0) })
+        val dialog = AlertDialog.Builder(this).setTitle(title)
+            .setView(form)
+            .setNegativeButton("CANCELAR", null)
+            .setPositiveButton("GENERAR CÓDIGO", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (phone.text.isNullOrBlank()) {
+                    Toast.makeText(this, "Captura el teléfono oficial AYUDA.", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                val action = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                action.isEnabled = false
+                Thread {
+                    try {
+                        val result = AdminApiClient(
+                            this, serverPrefs.getString("server_url", defaultServer) ?: defaultServer
+                        ).reissue(path, idField, idValue, phone.text.toString())
+                        val code = result.optString("activationCode")
+                            .ifBlank { result.optString("authorizationCode") }
+                            .ifBlank { result.optString("recoveryCode") }
+                        runOnUiThread {
+                            dialog.dismiss()
+                            AlertDialog.Builder(this).setTitle("CÓDIGO NUEVO")
+                                .setMessage(buildString {
+                                    append("Código de un solo uso:\n").append(code)
+                                    append("\n\n").append(result.optString("note"))
+                                    append("\n\nEntrégalo exclusivamente por el canal AYUDA oficial.")
+                                })
+                                .setPositiveButton("CERRAR", null).show()
+                        }
+                    } catch (error: Exception) {
+                        runOnUiThread {
+                            action.isEnabled = true
+                            Toast.makeText(this, error.message ?: "No se pudo reemitir el código.", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }.start()
+            }
+        }
+        dialog.show()
     }
 
     private fun showPaymentValidation(title: String, item: JSONObject, authorizePath: String) {

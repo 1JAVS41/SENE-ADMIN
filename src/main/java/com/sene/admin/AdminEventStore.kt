@@ -63,7 +63,10 @@ class AdminEventStore(context: Context) {
     fun getOrCreateAckId(deliveryId: String): String {
         require(deliveryId.isNotBlank() && deliveryId.length <= 120)
         val key = "pending_ack_" + deliveryId
-        return prefs.getString(key, null) ?: java.util.UUID.randomUUID().toString().also {
+        val savedAckId = prefs.getString(key, null)?.takeIf {
+            it.matches(Regex("(?i)^[0-9a-f-]{36}$"))
+        }
+        return savedAckId ?: java.util.UUID.randomUUID().toString().also {
             check(prefs.edit().putString(key, it).commit()) {
                 "No se pudo guardar el ACK pendiente para reintentar"
             }
@@ -71,7 +74,9 @@ class AdminEventStore(context: Context) {
     }
 
     fun clearAckId(deliveryId: String) {
-        prefs.edit().remove("pending_ack_" + deliveryId).commit()
+        check(prefs.edit().remove("pending_ack_" + deliveryId).commit()) {
+            "El servidor confirmó el ACK, pero no se pudo cerrar el recibo local"
+        }
     }
 
     private fun encryptAndCommit(value: String): Boolean {

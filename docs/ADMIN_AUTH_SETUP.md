@@ -41,7 +41,17 @@ Reemplazar el texto de ejemplo localmente antes de ejecutar. No guardar el archi
 
 ## Worker de pruebas
 
-Desde `cloudflare/sene-api`, configurar cada secreto en el entorno de pruebas:
+El despliegue de la rama `integration/ack-universal` solo afecta el Worker y D1 de pruebas. Para habilitar el login desde SENE ADMIN, agrega estos cuatro secretos en GitHub:
+
+- Repositorio `1JAVS41/SENE-PATRON` → Settings → Secrets and variables → Actions.
+- `SENE_TEST_ADMIN_LOGIN_EMAIL`
+- `SENE_TEST_ADMIN_PASSWORD_HASH`
+- `SENE_TEST_ADMIN_PASSWORD_SALT`
+- `SENE_TEST_ADMIN_SESSION_SECRET`
+
+El workflow de pruebas los instala como secretos del Worker `sene-licensing-api-testing` únicamente cuando están presentes los cuatro. Si faltan, el Worker responde `ADMIN_AUTH_NOT_CONFIGURED` y la APK no puede iniciar sesión.
+
+Alternativamente, desde `cloudflare/sene-api`, pueden configurarse manualmente en el entorno de pruebas:
 
 ```bash
 wrangler secret put ADMIN_LOGIN_EMAIL --config wrangler.testing.toml
@@ -50,8 +60,8 @@ wrangler secret put ADMIN_PASSWORD_HASH --config wrangler.testing.toml
 wrangler secret put ADMIN_SESSION_SECRET --config wrangler.testing.toml
 ```
 
-Después desplegar únicamente con `wrangler.testing.toml` o con el workflow de despliegue de pruebas. No ejecutar estos comandos con `wrangler.toml` de producción.
+No ejecutar estos comandos con `wrangler.toml` de producción.
 
 ## Estado funcional actual
 
-La APK permite iniciar sesión, guardar la sesión cifrada, cerrar sesión y consultar las bandejas de altas, renovaciones, reposiciones y recuperaciones. Los controles de autorización de pagos, decisiones, auditoría y ACK de eventos administrativos aún deben integrarse antes de considerar SENE ADMIN terminada o apta para pruebas reales.
+La APK permite iniciar sesión, guardar la sesión cifrada, cerrar sesión, consultar empresas/licencias y auditoría, revisar altas, renovaciones, reposiciones y pagos de recuperación, y autorizar los pagos que correspondan. Los controles de autorización de pagos, decisiones, auditoría y ACK de eventos administrativos aún deben integrarse antes de considerar SENE ADMIN terminada o apta para pruebas reales.

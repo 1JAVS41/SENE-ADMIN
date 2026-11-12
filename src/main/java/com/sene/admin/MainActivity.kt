@@ -165,6 +165,8 @@ class MainActivity : Activity() {
             11f, muted, false
         ).apply { setPadding(dp(4), dp(18), dp(4), 0) })
         setContentView(scroll)
+        // Una consulta al abrir el panel; no hay sondeo continuo en segundo plano.
+        refreshAdminEvents()
     }
 
     private fun refreshAdminEvents() {

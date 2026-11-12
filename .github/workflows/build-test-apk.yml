@@ -1,0 +1,45 @@
+name: Build SENE ADMIN test APK
+
+on:
+  push:
+    branches:
+      - integration/ack-universal
+    paths:
+      - "src/**"
+      - "build.gradle.kts"
+      - "settings.gradle.kts"
+      - "gradle.properties"
+      - ".github/workflows/build-test-apk.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: actions/setup-android@v3
+        with:
+          packages: "platform-tools platforms;android-35 build-tools;35.0.0"
+      - name: Instalar Gradle 8.9
+        run: |
+          curl -fsSL https://services.gradle.org/distributions/gradle-8.9-bin.zip -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp
+          echo "/tmp/gradle-8.9/bin" >> "$GITHUB_PATH"
+      - name: Compilar SENE ADMIN
+        run: gradle --no-daemon assembleDebug
+      - name: Verificar identidad y logotipo
+        run: |
+          APK="$(find build/outputs/apk/debug -maxdepth 1 -name '*.apk' -type f | head -n 1)"
+          test -s "$APK"
+          BADGING="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK")"
+          grep -F "name='com.sene.admin'" <<< "$BADGING"
+          grep -F "application-label:'SENE ADMIN'" <<< "$BADGING"
+          unzip -l "$APK" | grep -q 'logo_sene_pv'

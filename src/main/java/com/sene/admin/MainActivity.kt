@@ -416,7 +416,7 @@ class MainActivity : Activity() {
                     Toast.makeText(this, "Captura la referencia y el teléfono oficial.", Toast.LENGTH_LONG).show()
                     return@setOnClickListener
                 }
-                if (reference.text.toString().trim() != folio) {
+                if (!paymentReferenceMatchesFolio(reference.text.toString(), folio)) {
                     Toast.makeText(this, "La referencia debe coincidir exactamente con el folio de la solicitud.", Toast.LENGTH_LONG).show()
                     return@setOnClickListener
                 }

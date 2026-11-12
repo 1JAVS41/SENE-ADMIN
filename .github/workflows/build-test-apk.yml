@@ -13,6 +13,10 @@ on:
       - ".github/workflows/build-test-apk.yml"
   workflow_dispatch:
 
+concurrency:
+  group: sene-admin-test-apk
+  cancel-in-progress: true
+
 permissions:
   contents: read
 

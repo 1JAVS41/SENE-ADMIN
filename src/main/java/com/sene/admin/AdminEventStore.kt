@@ -21,14 +21,16 @@ class AdminEventStore(context: Context) {
         val merged = LinkedHashMap<String, JSONObject>()
         val previous = read()
         for (i in 0 until previous.length()) {
-            val item = previous.optJSONObject(i) ?: continue
-            val id = item.optString("eventId")
-            if (id.isNotBlank()) merged[id] = item
+            val item = previous.optJSONObject(i) ?: return false
+            val id = item.optString("eventId").trim()
+            if (id.isBlank()) return false
+            merged[id] = item
         }
         for (i in 0 until batch.length()) {
-            val item = batch.optJSONObject(i) ?: continue
-            val id = item.optString("eventId")
-            if (id.isNotBlank()) merged[id] = item
+            val item = batch.optJSONObject(i) ?: return false
+            val id = item.optString("eventId").trim()
+            if (id.isBlank()) return false
+            merged[id] = item
         }
         // Nunca descartar eventos locales que todavía podrían no estar confirmados por el servidor.
         val ordered = merged.values.sortedBy { it.optLong("cursor", 0L) }

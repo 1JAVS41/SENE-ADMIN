@@ -212,12 +212,24 @@ class MainActivity : Activity() {
         val rows = (0 until events.length()).mapNotNull { events.optJSONObject(it) }
         val labels = rows.map { event ->
             val payload = event.optJSONObject("payload") ?: JSONObject()
-            val business = payload.optString("businessName").ifBlank { payload.optString("licenseId") }
+            val business = payload.optString("businessName")
+                .ifBlank { payload.optString("licenseId") }
+                .ifBlank { event.optString("licenseId") }
             val type = when (event.optString("eventType")) {
                 "registration_requested" -> "Nueva alta"
-                "renewal_requested" -> "Renovación"
-                "replacement_payment_requested" -> "Reposición de equipo"
-                "patron_recovery_payment_requested" -> "Recuperación PATRÓN"
+                "registration_status_changed" -> "Estado de alta actualizado"
+                "payment_status_changed" -> "Estado de pago actualizado"
+                "renewal_requested" -> "Renovación solicitada"
+                "renewal_status_changed" -> "Renovación actualizada"
+                "replacement_payment_requested" -> "Pago de reposición solicitado"
+                "replacement_payment_status_changed" -> "Pago de reposición actualizado"
+                "replacement_status_changed" -> "Reposición decidida"
+                "patron_recovery_payment_requested" -> "Recuperación PATRÓN solicitada"
+                "patron_recovery_status_changed" -> "Recuperación PATRÓN actualizada"
+                "license_status_changed" -> "Estado de licencia actualizado"
+                "license_period_changed" -> "Vigencia de licencia actualizada"
+                "audit_recorded" -> "Registro de auditoría"
+                "official_support_configuration_changed" -> "Configuración AYUDA actualizada"
                 else -> event.optString("eventType")
             }
             if (business.isBlank()) type else "$type • $business"

@@ -50,6 +50,14 @@ class AdminApiClient(context: Context, baseUrl: String) {
             .put("deliveryPhone", deliveryPhone.trim()), token)
     }
 
+    fun reissue(path: String, idField: String, idValue: String, deliveryPhone: String): JSONObject {
+        val token = sessions.read() ?: throw IllegalStateException("La sesión administrativa venció")
+        require(idField in setOf("licenseId", "requestId") && idValue.isNotBlank() && deliveryPhone.isNotBlank())
+        return request(path, "POST", JSONObject()
+            .put(idField, idValue)
+            .put("deliveryPhone", deliveryPhone.trim()), token)
+    }
+
     fun adminEvents(): JSONObject {
         val token = sessions.read() ?: throw IllegalStateException("La sesión administrativa venció")
         return request("/v1/admin/events", "GET", null, token)

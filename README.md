@@ -21,3 +21,8 @@ La aplicación no contiene claves de operador ni secretos del servidor. Toda acc
 
 ## Estado
 Inicio del proyecto Android. La interfaz y los módulos se implementarán por etapas, con builds de pruebas verificables antes de considerar una APK lista.
+
+
+## Acceso administrativo seguro
+
+Consulta [docs/ADMIN_AUTH_SETUP.md](docs/ADMIN_AUTH_SETUP.md) para configurar el inicio de sesión del Worker de pruebas. No agregues tokens ni contraseñas al APK o al repositorio.

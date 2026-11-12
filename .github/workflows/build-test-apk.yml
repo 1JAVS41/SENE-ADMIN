@@ -76,7 +76,7 @@ jobs:
             adb devices -l
             adb install -r "$APK_PATH"
             adb shell am force-stop com.sene.admin
-            adb shell am start -W -n com.sene.admin/.MainActivity
+            adb shell am start -n com.sene.admin/.MainActivity
             sleep 3
             adb shell pidof com.sene.admin
 

@@ -123,6 +123,7 @@ class MainActivity : Activity() {
             arrayOf("RENOVACIONES", "Solicitudes de mensualidad pendientes.", "/v1/operator/renewals/pending", "/v1/operator/renewals/authorize"),
             arrayOf("REPOSICIONES DE EQUIPO", "Reposiciones pendientes de validación.", "/v1/operator/replacements/pending", "/v1/operator/replacements/authorize"),
             arrayOf("PAGOS DE RECUPERACIÓN PATRÓN", "Pagos para recuperar o reponer el equipo PATRÓN.", "/v1/operator/patron-recovery-payments/pending", "/v1/operator/patron-recovery-payments/authorize"),
+            arrayOf("RECUPERACIONES PATRÓN", "Solicitudes de recuperación, códigos y estados.", "/v1/operator/patron-recovery/pending", ""),
             arrayOf("AUDITORÍA", "Eventos administrativos y trazabilidad de operaciones.", "/v1/operator/audit", ""),
             arrayOf("NOTIFICACIONES ADMIN", "Bandeja durable de eventos administrativos con ACK.", "ADMIN_EVENTS", "")
         )

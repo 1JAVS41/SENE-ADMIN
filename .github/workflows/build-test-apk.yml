@@ -40,6 +40,8 @@ jobs:
           curl -fsSL https://services.gradle.org/distributions/gradle-8.9-bin.zip -o /tmp/gradle.zip
           unzip -q /tmp/gradle.zip -d /tmp
           echo "/tmp/gradle-8.9/bin" >> "$GITHUB_PATH"
+      - name: Ejecutar pruebas unitarias de folio
+        run: gradle --no-daemon testDebugUnitTest
       - name: Compilar SENE ADMIN
         run: gradle --no-daemon assembleDebug
       - name: Localizar APK para prueba de arranque

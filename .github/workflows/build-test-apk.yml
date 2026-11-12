@@ -1,4 +1,5 @@
 name: Build SENE ADMIN test APK
+# CI validates the Android project scaffold and the official SENE logo resource.
 
 on:
   push:

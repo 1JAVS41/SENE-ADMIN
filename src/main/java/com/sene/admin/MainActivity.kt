@@ -118,20 +118,23 @@ class MainActivity : Activity() {
             setPadding(dp(2), dp(20), 0, dp(8))
         })
         val modules = listOf(
-            Triple("REGISTROS PENDIENTES", "Altas de empresas y folios de activación.", "/v1/operator/registrations/pending"),
-            Triple("RENOVACIONES", "Solicitudes de mensualidad pendientes.", "/v1/operator/renewals/pending"),
-            Triple("REPOSICIONES DE EQUIPO", "Reposiciones pendientes de validación.", "/v1/operator/replacements/pending"),
-            Triple("PAGOS DE RECUPERACIÓN PATRÓN", "Pagos para recuperar o reponer el equipo PATRÓN.", "/v1/operator/patron-recovery-payments/pending"),
-            Triple("RECUPERACIONES", "Solicitudes de recuperación de licencias.", "/v1/operator/patron-recovery/pending")
+            arrayOf("REGISTROS PENDIENTES", "Altas de empresas y folios de activación.", "/v1/operator/registrations/pending", "/v1/operator/registrations/authorize"),
+            arrayOf("RENOVACIONES", "Solicitudes de mensualidad pendientes.", "/v1/operator/renewals/pending", "/v1/operator/renewals/authorize"),
+            arrayOf("REPOSICIONES DE EQUIPO", "Reposiciones pendientes de validación.", "/v1/operator/replacements/pending", "/v1/operator/replacements/authorize"),
+            arrayOf("PAGOS DE RECUPERACIÓN PATRÓN", "Pagos para recuperar o reponer el equipo PATRÓN.", "/v1/operator/patron-recovery-payments/pending", "/v1/operator/patron-recovery-payments/authorize")
         )
-        modules.forEach { (title, description, path) ->
+        modules.forEach { module ->
+            val title = module[0]
+            val description = module[1]
+            val path = module[2]
+            val authorizePath = module[3]
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setPadding(dp(16), dp(15), dp(16), dp(15))
                 setBackgroundColor(panel)
                 isClickable = true
                 isFocusable = true
-                setOnClickListener { loadPending(title, path) }
+                setOnClickListener { loadPending(title, path, authorizePath) }
             }
             card.addView(label(title, 15f, Color.WHITE, true))
             card.addView(label(description, 13f, muted, false).apply { setPadding(0, dp(5), 0, 0) })
@@ -158,26 +161,110 @@ class MainActivity : Activity() {
         setContentView(scroll)
     }
 
-    private fun loadPending(title: String, path: String) {
+    private fun loadPending(title: String, path: String, authorizePath: String) {
         val url = serverPrefs.getString("server_url", defaultServer) ?: defaultServer
         Toast.makeText(this, "Consultando $title…", Toast.LENGTH_SHORT).show()
         Thread {
             try {
                 val result = AdminApiClient(this, url).pending(path)
+                val items = result.optJSONArray("items") ?: org.json.JSONArray()
                 runOnUiThread {
-                    AlertDialog.Builder(this)
-                        .setTitle(title)
-                        .setMessage(result.toString(2))
-                        .setPositiveButton("CERRAR", null)
-                        .show()
+                    if (items.length() == 0) {
+                        AlertDialog.Builder(this).setTitle(title)
+                            .setMessage("No hay solicitudes pendientes.")
+                            .setPositiveButton("CERRAR", null).show()
+                    } else {
+                        val rows = (0 until items.length()).mapNotNull { items.optJSONObject(it) }
+                        val labels = rows.map { item ->
+                            val name = item.optString("business_name")
+                                .ifBlank { item.optString("businessName") }
+                                .ifBlank { item.optString("license_id") }
+                                .ifBlank { item.optString("id") }
+                            "$name  •  ${item.optString("status", "pendiente")}"
+                        }.toTypedArray()
+                        AlertDialog.Builder(this).setTitle(title)
+                            .setItems(labels) { _, index ->
+                                val item = rows[index]
+                                showPaymentValidation(title, item, authorizePath)
+                            }
+                            .setNegativeButton("CERRAR", null).show()
+                    }
                 }
             } catch (error: Exception) {
                 runOnUiThread {
                     Toast.makeText(this, error.message ?: "No se pudo consultar el servidor.", Toast.LENGTH_LONG).show()
-                    if (error.message?.contains("401") == true) renderLogin()
+                    if (error.message?.contains("401") == true) {
+                        sessions.clear()
+                        renderLogin()
+                    }
                 }
             }
         }.start()
+    }
+
+    private fun showPaymentValidation(title: String, item: JSONObject, authorizePath: String) {
+        val requestId = item.optString("id")
+        if (requestId.isBlank()) {
+            AlertDialog.Builder(this).setTitle(title).setMessage("La solicitud no contiene un identificador válido.")
+                .setPositiveButton("CERRAR", null).show()
+            return
+        }
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(20), dp(8), dp(20), 0)
+        }
+        val reference = field("Referencia exacta de transferencia")
+        val phone = field("Número oficial AYUDA (+52...)")
+        form.addView(reference, matchWrap())
+        form.addView(phone, matchWrap().apply { topMargin = dp(9) })
+        form.addView(label(
+            "Verifica primero el movimiento real en la cuenta bancaria. El servidor rechazará teléfonos que no estén registrados como AYUDA oficial.",
+            12f, muted, false
+        ).apply { setPadding(0, dp(10), 0, 0) })
+        val dialog = AlertDialog.Builder(this).setTitle("VALIDAR PAGO")
+            .setMessage(item.optString("business_name", item.optString("businessName", "Solicitud: $requestId")))
+            .setView(form)
+            .setNegativeButton("CANCELAR", null)
+            .setPositiveButton("CONFIRMAR PAGO", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (reference.text.isNullOrBlank() || phone.text.isNullOrBlank()) {
+                    Toast.makeText(this, "Captura la referencia y el teléfono oficial.", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                val button = dialog.getButton(AlertDialog.BUTTON_POSITIVE)
+                button.isEnabled = false
+                Thread {
+                    try {
+                        val result = AdminApiClient(
+                            this, serverPrefs.getString("server_url", defaultServer) ?: defaultServer
+                        ).authorize(authorizePath, requestId, reference.text.toString(), phone.text.toString())
+                        val code = result.optString("activationCode")
+                            .ifBlank { result.optString("authorizationCode") }
+                            .ifBlank { result.optString("recoveryCode") }
+                        runOnUiThread {
+                            dialog.dismiss()
+                            val message = buildString {
+                                append("Pago validado y solicitud autorizada.")
+                                if (code.isNotBlank()) append("\n\nCódigo de un solo uso:\n").append(code)
+                                append("\n\n").append(result.optString("note"))
+                                append("\n\nEntrega el código exclusivamente por el canal AYUDA oficial.")
+                            }
+                            AlertDialog.Builder(this).setTitle("OPERACIÓN CONFIRMADA")
+                                .setMessage(message)
+                                .setPositiveButton("CERRAR", null).show()
+                        }
+                    } catch (error: Exception) {
+                        runOnUiThread {
+                            button.isEnabled = true
+                            Toast.makeText(this, error.message ?: "No se pudo autorizar el pago.", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }.start()
+            }
+        }
+        dialog.show()
     }
 
     private fun logo() = ImageView(this).apply {

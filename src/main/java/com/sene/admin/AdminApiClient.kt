@@ -35,6 +35,15 @@ class AdminApiClient(context: Context, baseUrl: String) {
         return request(path, "GET", null, token)
     }
 
+    fun authorize(path: String, requestId: String, paymentReference: String, deliveryPhone: String): JSONObject {
+        val token = sessions.read() ?: throw IllegalStateException("La sesión administrativa venció")
+        require(requestId.isNotBlank() && paymentReference.isNotBlank() && deliveryPhone.isNotBlank())
+        return request(path, "POST", JSONObject()
+            .put("requestId", requestId)
+            .put("paymentReference", paymentReference.trim())
+            .put("deliveryPhone", deliveryPhone.trim()), token)
+    }
+
     private fun request(path: String, method: String, body: JSONObject?, token: String?): JSONObject {
         val connection = (URL(root + path).openConnection() as HttpURLConnection).apply {
             requestMethod = method

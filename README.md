@@ -15,9 +15,9 @@ SENE-ADMIN NO recibe inventarios, ventas, reportes laborales ni nómina. Esa inf
 ## Seguridad
 La aplicación no contiene claves de operador ni secretos del servidor. Toda acción pasa por la API autenticada. Las notificaciones push solo despiertan/sincronizan la bandeja: el evento durable permanece en el servidor hasta su ACK. Un comprobante no confirma automáticamente un pago.
 
-## Documento maestro
-
-La especificación consolidada de funcionamiento de las tres APK, backend, ramas auditadas, integración y ahorro de tráfico está en [`docs/ARQUITECTURA_MAESTRA_SENE.md`](docs/ARQUITECTURA_MAESTRA_SENE.md).
+## Documentación técnica
+- [Arquitectura maestra de las tres APK y el backend](docs/ARQUITECTURA_MAESTRA_SENE.md).
+- [Protocolo ACK universal: entregas, operaciones, cursores, reintentos, retención y pruebas](docs/PROTOCOLO_ACK_UNIVERSAL.md).
 
 ## Estado
 Inicio del proyecto Android. La interfaz y los módulos se implementarán por etapas, con builds de pruebas verificables antes de considerar una APK lista.

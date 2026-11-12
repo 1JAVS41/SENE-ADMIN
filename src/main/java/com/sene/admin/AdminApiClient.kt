@@ -117,7 +117,17 @@ class AdminApiClient(context: Context, baseUrl: String) {
             val status = connection.responseCode
             val stream = if (status in 200..299) connection.inputStream else connection.errorStream
             val response = stream?.bufferedReader(Charsets.UTF_8)?.use { it.readText() }.orEmpty()
-            if (status !in 200..299) throw IOException("Servidor SENE HTTP $status: $response")
+            if (status !in 200..299) {
+                val errorCode = runCatching { JSONObject(response).optString("error") }.getOrDefault("")
+                val message = when (errorCode) {
+                    "ADMIN_AUTH_NOT_CONFIGURED" ->
+                        "El acceso de SENE ADMIN aún no está habilitado en el servidor de pruebas. Falta configurar las credenciales administrativas del entorno."
+                    "ADMIN_UNAUTHORIZED" ->
+                        "El servidor rechazó el acceso administrativo. Revisa el correo y la contraseña."
+                    else -> "Servidor SENE HTTP $status: $response"
+                }
+                throw IOException(message)
+            }
             return if (response.isBlank()) JSONObject() else JSONObject(response)
         } finally {
             connection.disconnect()

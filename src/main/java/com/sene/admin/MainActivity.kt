@@ -262,7 +262,11 @@ class MainActivity : Activity() {
                                 .ifBlank { item.optString("businessName") }
                                 .ifBlank { item.optString("license_id") }
                                 .ifBlank { item.optString("id") }
-                            "$name  •  ${item.optString("status", "pendiente")}"
+                            val folio = item.optString("folio")
+                                .ifBlank { item.optString("payment_request_id") }
+                                .ifBlank { item.optString("requestId") }
+                                .ifBlank { item.optString("id") }
+                            "$name  •  ${item.optString("status", "pendiente")}  •  Folio: $folio"
                         }.toTypedArray()
                         AlertDialog.Builder(this).setTitle(title)
                             .setItems(labels) { _, index ->
@@ -380,16 +384,28 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(20), dp(8), dp(20), 0)
         }
-        val reference = field("Referencia exacta de transferencia")
+        val folio = item.optString("folio")
+            .ifBlank { item.optString("payment_request_id") }
+            .ifBlank { item.optString("requestId") }
+            .ifBlank { requestId }
+        val reference = field("Concepto/referencia exacta del banco").apply { setText(folio) }
         val phone = field("Número oficial AYUDA (+52...)")
-        form.addView(reference, matchWrap())
+        form.addView(label("FOLIO ÚNICO DE LA SOLICITUD", 12f, blue, true))
+        form.addView(label(folio, 15f, Color.WHITE, true).apply {
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            setBackgroundColor(panel)
+        }, matchWrap())
+        form.addView(reference, matchWrap().apply { topMargin = dp(9) })
         form.addView(phone, matchWrap().apply { topMargin = dp(9) })
         form.addView(label(
-            "Verifica primero el movimiento real en la cuenta bancaria. El servidor rechazará teléfonos que no estén registrados como AYUDA oficial.",
+            "Comprueba el movimiento bancario real y confirma que el concepto/referencia sea exactamente igual al folio mostrado. El servidor rechazará teléfonos que no estén registrados como AYUDA oficial.",
             12f, muted, false
         ).apply { setPadding(0, dp(10), 0, 0) })
         val dialog = AlertDialog.Builder(this).setTitle("VALIDAR PAGO")
-            .setMessage(item.optString("business_name", item.optString("businessName", "Solicitud: $requestId")))
+            .setMessage(
+                "Empresa: " + item.optString("business_name", item.optString("businessName", "—")) +
+                    "\\nFolio único: " + folio
+            )
             .setView(form)
             .setNegativeButton("CANCELAR", null)
             .setPositiveButton("CONFIRMAR PAGO", null)
@@ -398,6 +414,10 @@ class MainActivity : Activity() {
             dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
                 if (reference.text.isNullOrBlank() || phone.text.isNullOrBlank()) {
                     Toast.makeText(this, "Captura la referencia y el teléfono oficial.", Toast.LENGTH_LONG).show()
+                    return@setOnClickListener
+                }
+                if (reference.text.toString().trim() != folio) {
+                    Toast.makeText(this, "La referencia debe coincidir exactamente con el folio de la solicitud.", Toast.LENGTH_LONG).show()
                     return@setOnClickListener
                 }
                 val button = dialog.getButton(AlertDialog.BUTTON_POSITIVE)

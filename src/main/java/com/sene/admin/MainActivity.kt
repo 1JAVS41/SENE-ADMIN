@@ -404,7 +404,7 @@ class MainActivity : Activity() {
         val dialog = AlertDialog.Builder(this).setTitle("VALIDAR PAGO")
             .setMessage(
                 "Empresa: " + item.optString("business_name", item.optString("businessName", "—")) +
-                    "\\nFolio único: " + folio
+                    "\nFolio único: " + folio
             )
             .setView(form)
             .setNegativeButton("CANCELAR", null)

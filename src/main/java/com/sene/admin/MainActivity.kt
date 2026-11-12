@@ -123,7 +123,8 @@ class MainActivity : Activity() {
             arrayOf("RENOVACIONES", "Solicitudes de mensualidad pendientes.", "/v1/operator/renewals/pending", "/v1/operator/renewals/authorize"),
             arrayOf("REPOSICIONES DE EQUIPO", "Reposiciones pendientes de validación.", "/v1/operator/replacements/pending", "/v1/operator/replacements/authorize"),
             arrayOf("PAGOS DE RECUPERACIÓN PATRÓN", "Pagos para recuperar o reponer el equipo PATRÓN.", "/v1/operator/patron-recovery-payments/pending", "/v1/operator/patron-recovery-payments/authorize"),
-            arrayOf("AUDITORÍA", "Eventos administrativos y trazabilidad de operaciones.", "/v1/operator/audit", "")
+            arrayOf("AUDITORÍA", "Eventos administrativos y trazabilidad de operaciones.", "/v1/operator/audit", ""),
+            arrayOf("NOTIFICACIONES ADMIN", "Bandeja durable de eventos administrativos con ACK.", "ADMIN_EVENTS", "")
         )
         modules.forEach { module ->
             val title = module[0]
@@ -136,7 +137,10 @@ class MainActivity : Activity() {
                 setBackgroundColor(panel)
                 isClickable = true
                 isFocusable = true
-                setOnClickListener { loadPending(title, path, authorizePath) }
+                setOnClickListener {
+                    if (path == "ADMIN_EVENTS") refreshAdminEvents()
+                    else loadPending(title, path, authorizePath)
+                }
             }
             card.addView(label(title, 15f, Color.WHITE, true))
             card.addView(label(description, 13f, muted, false).apply { setPadding(0, dp(5), 0, 0) })
@@ -161,6 +165,63 @@ class MainActivity : Activity() {
             11f, muted, false
         ).apply { setPadding(dp(4), dp(18), dp(4), 0) })
         setContentView(scroll)
+    }
+
+    private fun refreshAdminEvents() {
+        val url = serverPrefs.getString("server_url", defaultServer) ?: defaultServer
+        val store = AdminEventStore(this)
+        Toast.makeText(this, "Sincronizando notificaciones administrativas…", Toast.LENGTH_SHORT).show()
+        Thread {
+            try {
+                val api = AdminApiClient(this, url)
+                val batch = api.adminEvents()
+                val items = batch.optJSONArray("items") ?: org.json.JSONArray()
+                if (items.length() > 0) {
+                    // Guardar el lote cifrado completo antes de confirmar el cursor.
+                    check(store.persist(items)) { "No se pudo guardar localmente la bandeja administrativa." }
+                    val deliveryId = batch.optString("deliveryId")
+                    val ackId = store.getOrCreateAckId(deliveryId)
+                    val ack = api.acknowledgeAdminEvents(batch, ackId)
+                    check(ack.optBoolean("acknowledged", false)) { "El servidor no confirmó el ACK administrativo." }
+                    store.clearAckId(deliveryId)
+                }
+                val saved = store.read()
+                runOnUiThread { showAdminEventList(saved) }
+            } catch (error: Exception) {
+                runOnUiThread {
+                    Toast.makeText(this, error.message ?: "No se pudo sincronizar la bandeja administrativa.", Toast.LENGTH_LONG).show()
+                    if (error.message?.contains("401") == true) {
+                        sessions.clear()
+                        renderLogin()
+                    }
+                }
+            }
+        }.start()
+    }
+
+    private fun showAdminEventList(events: org.json.JSONArray) {
+        if (events.length() == 0) {
+            AlertDialog.Builder(this).setTitle("NOTIFICACIONES ADMIN")
+                .setMessage("No hay eventos administrativos recibidos.")
+                .setPositiveButton("CERRAR", null).show()
+            return
+        }
+        val rows = (0 until events.length()).mapNotNull { events.optJSONObject(it) }
+        val labels = rows.map { event ->
+            val payload = event.optJSONObject("payload") ?: JSONObject()
+            val business = payload.optString("businessName").ifBlank { payload.optString("licenseId") }
+            val type = when (event.optString("eventType")) {
+                "registration_requested" -> "Nueva alta"
+                "renewal_requested" -> "Renovación"
+                "replacement_payment_requested" -> "Reposición de equipo"
+                "patron_recovery_payment_requested" -> "Recuperación PATRÓN"
+                else -> event.optString("eventType")
+            }
+            if (business.isBlank()) type else "$type • $business"
+        }.toTypedArray()
+        AlertDialog.Builder(this).setTitle("NOTIFICACIONES ADMIN (${rows.size})")
+            .setItems(labels) { _, index -> showItemDetails("EVENTO ADMINISTRATIVO", rows[index]) }
+            .setPositiveButton("CERRAR", null).show()
     }
 
     private fun loadPending(title: String, path: String, authorizePath: String) {

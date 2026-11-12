@@ -232,7 +232,11 @@ class MainActivity : Activity() {
                 "official_support_configuration_changed" -> "Configuración AYUDA actualizada"
                 else -> event.optString("eventType")
             }
-            if (business.isBlank()) type else "$type • $business"
+            val folio = payload.optString("folio")
+                .ifBlank { payload.optString("requestId") }
+                .ifBlank { payload.optString("paymentRequestId") }
+            val summary = if (business.isBlank()) type else "$type • $business"
+            if (folio.isBlank()) summary else "$summary • Folio: $folio"
         }.toTypedArray()
         AlertDialog.Builder(this).setTitle("NOTIFICACIONES ADMIN (${rows.size})")
             .setItems(labels) { _, index -> showItemDetails("EVENTO ADMINISTRATIVO", rows[index]) }

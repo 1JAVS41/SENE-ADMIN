@@ -82,7 +82,7 @@ class MainActivity : Activity() {
                 } catch (error: Exception) {
                     runOnUiThread {
                         enter.isEnabled = true
-                        Toast.makeText(this, error.message ?: "No se pudo iniciar sesión.", Toast.LENGTH_LONG).show()
+                        Toast.makeText(this, adminLoginError(error), Toast.LENGTH_LONG).show()
                     }
                 }
             }.start()
@@ -92,6 +92,23 @@ class MainActivity : Activity() {
             12f, muted, false
         ).apply { setPadding(0, dp(18), 0, 0) })
         setContentView(ScrollView(this).apply { addView(root) })
+    }
+
+    private fun adminLoginError(error: Exception): String {
+        val raw = error.message.orEmpty()
+        val code = try {
+            val jsonText = raw.substringAfter(": ", raw)
+            org.json.JSONObject(jsonText).optString("error")
+        } catch (_: Exception) { "" }
+        return when (code) {
+            "ADMIN_AUTH_NOT_CONFIGURED" ->
+                "El acceso de SENE ADMIN aún no está habilitado en el servidor de pruebas. Falta configurar las credenciales administrativas seguras."
+            "INVALID_CREDENTIALS" ->
+                "El correo o la contraseña administrativa no son correctos."
+            "ADMIN_LOGIN_RATE_LIMITED" ->
+                "Se alcanzó el límite de intentos. Espera antes de volver a iniciar sesión."
+            else -> raw.ifBlank { "No se pudo iniciar sesión. Comprueba la conexión y vuelve a intentarlo." }
+        }
     }
 
     private fun renderHome() {

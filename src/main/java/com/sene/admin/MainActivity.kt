@@ -280,9 +280,9 @@ class MainActivity : Activity() {
                                 .ifBlank { item.optString("license_id") }
                                 .ifBlank { item.optString("id") }
                             val folio = item.optString("folio")
-                                .ifBlank { item.optString("payment_request_id") }
                                 .ifBlank { item.optString("requestId") }
                                 .ifBlank { item.optString("id") }
+                                .ifBlank { item.optString("payment_request_id") }
                             "$name  •  ${item.optString("status", "pendiente")}  •  Folio: $folio"
                         }.toTypedArray()
                         AlertDialog.Builder(this).setTitle(title)
@@ -402,8 +402,9 @@ class MainActivity : Activity() {
             setPadding(dp(20), dp(8), dp(20), 0)
         }
         val folio = item.optString("folio")
-            .ifBlank { item.optString("payment_request_id") }
             .ifBlank { item.optString("requestId") }
+            .ifBlank { item.optString("id") }
+            .ifBlank { item.optString("payment_request_id") }
             .ifBlank { requestId }
         val reference = field("Concepto/referencia exacta del banco").apply { setText(folio) }
         val phone = field("Número oficial AYUDA (+52...)")

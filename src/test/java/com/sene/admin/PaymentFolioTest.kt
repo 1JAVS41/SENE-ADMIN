@@ -11,15 +11,23 @@ class PaymentFolioTest {
 
     @Test fun trimsOnlyOuterWhitespace() {
         assertTrue(paymentReferenceMatchesFolio("  SENE-2026-ABC123  ", "SENE-2026-ABC123"))
+        assertTrue(paymentReferenceMatchesFolio("\tSENE-2026-ABC123\n", " SENE-2026-ABC123 "))
     }
 
-    @Test fun rejectsDifferentReference() {
+    @Test fun rejectsDifferentOrPartialReferences() {
         assertFalse(paymentReferenceMatchesFolio("SENE-2026-ABC124", "SENE-2026-ABC123"))
-        assertFalse(paymentReferenceMatchesFolio("SENE-2026-abc123", "SENE-2026-ABC123"))
-        assertFalse(paymentReferenceMatchesFolio("SENE 2026 ABC123", "SENE-2026-ABC123"))
+        assertFalse(paymentReferenceMatchesFolio("SENE-2026-ABC12", "SENE-2026-ABC123"))
+        assertFalse(paymentReferenceMatchesFolio("SENE-2026-ABC123-extra", "SENE-2026-ABC123"))
     }
 
-    @Test fun rejectsBlankFolio() {
+    @Test fun comparisonIsCaseSensitiveAndDoesNotNormalizeInternalCharacters() {
+        assertFalse(paymentReferenceMatchesFolio("sene-2026-abc123", "SENE-2026-ABC123"))
+        assertFalse(paymentReferenceMatchesFolio("SENE 2026 ABC123", "SENE-2026-ABC123"))
+        assertFalse(paymentReferenceMatchesFolio("SENE--2026-ABC123", "SENE-2026-ABC123"))
+    }
+
+    @Test fun rejectsBlankFolioAndBlankReference() {
         assertFalse(paymentReferenceMatchesFolio("anything", "  "))
+        assertFalse(paymentReferenceMatchesFolio(" ", "SENE-2026-ABC123"))
     }
 }
